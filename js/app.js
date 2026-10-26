@@ -150,6 +150,7 @@ function createChart(map) {
   const root = mainLineRootId();
   if (root) chart.updateMainId(root); // start od głównej linii
   chart.updateTree({ initial: true });
+  updateLineageOptions();
   // jeśli repo puste, osoba startowa jest zmianą do zapisania
   onLocalChange();
 }
@@ -307,14 +308,22 @@ function showPerson(id) {
   edit.open(chart.store.getDatum(id));
 }
 
-/**
- * family-chart rysuje przodków i potomków osoby głównej, więc „główna linia” to widok od przodka
- * (osoby bez rodziców), który ma najwięcej potomków razem z ich małżonkami. Zwraca jego id.
- */
-function mainLineRootId() {
-  const data = chart.store.getData().filter((p) => !p._new_rel_data && !p.to_add);
-  const byId = new Map(data.map((p) => [p.id, p]));
-  const reach = (rootId) => {
+// ---------- główna linia i rody ----------
+// family-chart rysuje przodków i potomków osoby głównej, więc widok „od przodka” pokazuje jego linię:
+// potomków razem z ich małżonkami.
+
+const realPeople = () => chart.store.getData().filter((p) => !p._new_rel_data && !p.to_add);
+
+/** Nazwisko rodu: rodowe, jeśli wpisane (żona z nazwiskiem męża), w formie męskiej (Kowalska -> Kowalski). */
+function familyName(p) {
+  const n = (p.data['birth name'] || p.data['last name'] || '').trim();
+  return n.replace(/(sk|ck|dzk)a$/i, '$1i');
+}
+const sameName = (a, b) => a.localeCompare(b, 'pl', { sensitivity: 'base' }) === 0;
+
+/** Spośród kandydatów wybiera przodka z najdłuższą linią; przy remisie mężczyznę, potem starszego. */
+function bestAncestor(candidates, byId) {
+  const lineSize = (rootId) => {
     const seen = new Set();
     const visit = (id) => {
       const p = byId.get(id);
@@ -326,21 +335,50 @@ function mainLineRootId() {
     visit(rootId);
     return seen.size;
   };
-  let best = null, bestSize = 0;
-  for (const p of data) {
-    if ((p.rels.parents || []).length) continue;
-    const size = reach(p.id);
-    if (size > bestSize) { best = p; bestSize = size; }
-  }
-  return best?.id;
+  const born = (p) => Number(year(p.data.birthday)) || Infinity;
+  return candidates
+    .map((p) => ({ p, size: lineSize(p.id) }))
+    .sort((a, b) => b.size - a.size || (a.p.data.gender === 'M' ? -1 : 0) - (b.p.data.gender === 'M' ? -1 : 0) || born(a.p) - born(b.p))[0]?.p.id;
 }
 
-function showWholeTree() {
-  const root = mainLineRootId();
+/** Główna linia: przodek (osoba bez rodziców) z największą liczbą potomków. */
+function mainLineRootId() {
+  const data = realPeople();
+  return bestAncestor(data.filter((p) => !(p.rels.parents || []).length), new Map(data.map((p) => [p.id, p])));
+}
+
+/** Pierwszy przodek rodu: osoba o tym nazwisku, której żaden z rodziców go nie nosi. */
+function lineageRootId(name) {
+  const data = realPeople();
+  const byId = new Map(data.map((p) => [p.id, p]));
+  const heads = data.filter((p) => sameName(familyName(p), name)
+    && !(p.rels.parents || []).some((id) => byId.has(id) && sameName(familyName(byId.get(id)), name)));
+  return bestAncestor(heads, byId);
+}
+
+function showFrom(root) {
   if (!root) return;
   edit.closeForm();
   chart.updateMainId(root);
   chart.updateTree({ tree_position: 'fit' });
+}
+
+/** Lista w górnym pasku: „Główna linia” i rody z liczbą osób. */
+function updateLineageOptions() {
+  const counts = new Map();
+  for (const p of realPeople()) {
+    const n = familyName(p);
+    if (!n) continue;
+    const key = [...counts.keys()].find((k) => sameName(k, n)) || n;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const sel = $('lineage');
+  const opt = (value, text) => Object.assign(document.createElement('option'), { value, textContent: text });
+  sel.replaceChildren(
+    opt('', 'Pokaż ród…'),
+    opt('*', 'Główna linia'),
+    ...[...counts].sort((a, b) => a[0].localeCompare(b[0], 'pl')).map(([n, c]) => opt(n, `${n} (${c})`)),
+  );
 }
 
 function refreshChart(map) {
@@ -351,6 +389,7 @@ function refreshChart(map) {
   chart.updateData(data);
   if (!data.find((d) => d.id === mainId)) chart.updateMainId(data[0].id);
   chart.updateTree({ tree_position: 'inherit' });
+  updateLineageOptions();
   if (map.size === 0) onLocalChange();
 }
 
@@ -362,6 +401,7 @@ function readChart() {
 // ---------- zmiany lokalne ----------
 function onLocalChange() {
   state.local = readChart();
+  updateLineageOptions();
   updateDirtyUi();
   saveDraft();
 }
@@ -592,7 +632,11 @@ async function start() {
 
 // ---------- przyciski ----------
 el.save.onclick = save;
-$('btn-whole').onclick = () => chart && showWholeTree();
+$('lineage').onchange = (e) => {
+  const v = e.target.value;
+  e.target.value = ''; // ten sam ród można wybrać ponownie
+  if (chart && v) showFrom(v === '*' ? mainLineRootId() : lineageRootId(v));
+};
 el.note.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
 el.discard.onclick = () => {
   if (!confirm('Odrzucić wszystkie niezapisane zmiany?')) return;

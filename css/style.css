@@ -27,6 +27,11 @@ button:hover:not(:disabled) { border-color: var(--muted); }
 button:disabled { opacity: .45; cursor: default; }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 button.ghost { background: transparent; }
+#lineage {
+  padding: 7px 10px; background: transparent; color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; max-width: 200px;
+}
+#lineage option { background: var(--panel); }
 button.icon { padding: 4px 10px; font-size: 18px; line-height: 1; }
 
 /* ---- pasek górny ---- */
