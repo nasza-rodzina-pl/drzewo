@@ -147,6 +147,8 @@ function createChart(map) {
 
   chart.setPersonDropdown((d) => displayName(d), { placeholder: 'Szukaj osoby' });
 
+  const root = mainLineRootId();
+  if (root) chart.updateMainId(root); // start od głównej linii
   chart.updateTree({ initial: true });
   // jeśli repo puste, osoba startowa jest zmianą do zapisania
   onLocalChange();
@@ -307,9 +309,9 @@ function showPerson(id) {
 
 /**
  * family-chart rysuje przodków i potomków osoby głównej, więc „główna linia” to widok od przodka
- * (osoby bez rodziców), który ma najwięcej potomków razem z ich małżonkami.
+ * (osoby bez rodziców), który ma najwięcej potomków razem z ich małżonkami. Zwraca jego id.
  */
-function showWholeTree() {
+function mainLineRootId() {
   const data = chart.store.getData().filter((p) => !p._new_rel_data && !p.to_add);
   const byId = new Map(data.map((p) => [p.id, p]));
   const reach = (rootId) => {
@@ -330,9 +332,14 @@ function showWholeTree() {
     const size = reach(p.id);
     if (size > bestSize) { best = p; bestSize = size; }
   }
-  if (!best) return;
+  return best?.id;
+}
+
+function showWholeTree() {
+  const root = mainLineRootId();
+  if (!root) return;
   edit.closeForm();
-  chart.updateMainId(best.id);
+  chart.updateMainId(root);
   chart.updateTree({ tree_position: 'fit' });
 }
 
