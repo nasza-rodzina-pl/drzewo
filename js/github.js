@@ -35,8 +35,9 @@ async function pool(items, limit, fn) {
 }
 
 export class GitHubStore {
-  constructor({ owner, repo, branch = 'main', dir = 'people', token }) {
-    Object.assign(this, { owner, repo, branch, dir: dir.replace(/^\/+|\/+$/g, ''), token });
+  /** token: tekst albo funkcja (async) zwracająca aktualny token; onUnauthorized: odświeża token po 401. */
+  constructor({ owner, repo, branch = 'main', dir = 'people', token, onUnauthorized }) {
+    Object.assign(this, { owner, repo, branch, dir: dir.replace(/^\/+|\/+$/g, ''), token, onUnauthorized });
     this.blobCache = new Map(); // sha bloba -> osoba
     this.pathById = new Map(); // id osoby -> ścieżka pliku
     this.refEtag = null;
@@ -47,19 +48,22 @@ export class GitHubStore {
     return `/repos/${encodeURIComponent(this.owner)}/${encodeURIComponent(this.repo)}`;
   }
 
-  async request(path, { method = 'GET', body, headers = {} } = {}) {
+  async request(path, opts = {}, retry = true) {
+    const { method = 'GET', body, headers = {} } = opts;
+    const token = typeof this.token === 'function' ? await this.token() : this.token;
     const res = await fetch(API + path, {
       method,
       cache: 'no-store',
       headers: {
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
-        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...headers,
       },
       body: body ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 401 && retry && this.onUnauthorized && (await this.onUnauthorized())) return this.request(path, opts, false);
     if (res.status === 304) return { notModified: true, res };
     let data = null;
     const text = await res.text();
@@ -97,7 +101,7 @@ export class GitHubStore {
       head = await this.getHead();
     } catch (e) {
       if (e.status === 409) throw new GitHubError('Repozytorium jest puste — utwórz w nim pierwszy commit (np. README).', 409);
-      if (e.status === 404) throw new GitHubError(`Nie znaleziono repozytorium lub gałęzi "${this.branch}" (albo token nie ma do nich dostępu).`, 404);
+      if (e.status === 404) throw new GitHubError(`Nie znaleziono repozytorium lub gałęzi "${this.branch}" (albo Twoje konto nie ma do nich dostępu).`, 404);
       throw e;
     }
     const commit = (await this.request(`${this.repoPath}/git/commits/${head}`)).data;

@@ -27,7 +27,7 @@
         <a id="menu-history" target="_blank" rel="noopener">Historia zmian w GitHubie</a>
         <button id="menu-reload">Wczytaj ponownie</button>
         <button id="menu-export">Pobierz dane (JSON)</button>
-        <button id="menu-logout">Wyloguj (usuń token)</button>
+        <button id="menu-logout">Wyloguj</button>
       </div>
       <img id="avatar" class="avatar" alt="" hidden>
     </div>
@@ -42,21 +42,10 @@
 
   <dialog id="login">
     <form method="dialog" id="login-form">
-      <h2>Połącz z repozytorium</h2>
-      <p class="muted">Dane drzewa są przechowywane w repozytorium GitHuba. Do odczytu i zapisu potrzebny jest Twój osobisty token dostępu.</p>
-      <div class="grid">
-        <label>Właściciel<input name="owner" required autocomplete="off"></label>
-        <label>Repozytorium<input name="repo" required autocomplete="off"></label>
-        <label>Gałąź<input name="branch" required autocomplete="off"></label>
-        <label>Katalog danych<input name="dir" required autocomplete="off"></label>
-      </div>
-      <label>Token (fine-grained PAT, uprawnienie <b>Contents: Read and write</b>)
-        <input name="token" type="password" required autocomplete="off" spellcheck="false">
-      </label>
-      <label class="check"><input name="remember" type="checkbox" checked> Zapamiętaj token w tej przeglądarce</label>
-      <p class="muted small"><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Utwórz token na GitHubie →</a></p>
+      <h2>Zaloguj się</h2>
+      <p class="muted">Dane drzewa są przechowywane w prywatnym repozytorium GitHuba. Zaloguj się kontem GitHub, które ma do niego dostęp.</p>
       <p id="login-error" class="error" hidden></p>
-      <div class="dialog-actions"><button class="primary" value="ok">Połącz</button></div>
+      <div class="dialog-actions"><button class="primary" value="ok">Zaloguj przez GitHub</button></div>
     </form>
   </dialog>
 

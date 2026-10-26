@@ -1,10 +1,12 @@
 import { GitHubStore, ConflictError } from './github.js';
+import { Auth } from './auth.js';
 import { toMap, toList, merge3, diff, commitMessage, displayName, normalizePerson, repairIntegrity } from './merge.js';
 import { translateTree } from './i18n.js';
 
 const f3 = window.f3;
 const CFG = window.FAMILY_TREE_CONFIG || {};
 const LS = 'family-tree:';
+const auth = new Auth(CFG);
 const MAX_SAVE_ATTEMPTS = 5;
 
 const FIELDS = [
@@ -36,23 +38,6 @@ const el = {
   banner: $('banner'), bannerText: $('banner-text'), toast: $('toast'), avatar: $('avatar'),
   menu: $('menu'), repoLink: $('repo-link'), login: $('login'), loginForm: $('login-form'), loginError: $('login-error'),
 };
-
-// ---------- ustawienia i token ----------
-function settings() {
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem(LS + 'settings') || '{}'); } catch {}
-  return { ...CFG, ...saved };
-}
-function getToken() {
-  try { return sessionStorage.getItem(LS + 'token') || localStorage.getItem(LS + 'token'); } catch { return null; }
-}
-function setToken(token, remember) {
-  try {
-    localStorage.removeItem(LS + 'token');
-    sessionStorage.removeItem(LS + 'token');
-    if (token) (remember ? localStorage : sessionStorage).setItem(LS + 'token', token);
-  } catch {}
-}
 const draftKey = () => `${LS}draft:${state.store.owner}/${state.store.repo}/${state.store.branch}/${state.store.dir}`;
 
 // ---------- UI pomocnicze ----------
@@ -258,8 +243,9 @@ async function save() {
     console.error(e);
     state.saving = false;
     updateDirtyUi();
+    if (e.status === 401) return sessionExpired();
     const msg = e.status === 403 || e.status === 404
-      ? 'Brak uprawnień do zapisu — token potrzebuje „Contents: Read and write” dla tego repozytorium.'
+      ? `Brak uprawnień do zapisu — Twoje konto potrzebuje dostępu do zapisu w repozytorium ${CFG.owner}/${CFG.repo}.`
       : `Nie udało się zapisać: ${e.message}`;
     banner(msg, [['Spróbuj ponownie', () => { banner(null); save(); }]]);
     setStatus('Błąd zapisu', 'error');
@@ -301,57 +287,71 @@ async function poll() {
       ]);
     }
   } catch (e) {
+    if (e.status === 401) return sessionExpired();
     console.warn('Sprawdzanie zmian nie powiodło się', e);
   }
 }
 
 // ---------- logowanie ----------
 function openLogin(error) {
-  const s = settings();
-  const f = el.loginForm.elements;
-  for (const k of ['owner', 'repo', 'branch', 'dir']) f[k].value = s[k] || '';
-  f.token.value = '';
   el.loginError.hidden = !error;
   el.loginError.textContent = error || '';
-  el.login.showModal();
+  if (!el.login.open) el.login.showModal();
+}
+
+function sessionExpired() {
+  clearInterval(state.pollTimer);
+  auth.logout();
+  setStatus('Wylogowano', 'error');
+  openLogin('Sesja wygasła — zaloguj się ponownie. Niezapisane zmiany są zachowane w tej przeglądarce.');
 }
 
 el.loginForm.addEventListener('submit', async (ev) => {
   ev.preventDefault();
-  const f = el.loginForm.elements;
-  const s = { owner: f.owner.value.trim(), repo: f.repo.value.trim(), branch: f.branch.value.trim(), dir: f.dir.value.trim() };
-  try { localStorage.setItem(LS + 'settings', JSON.stringify(s)); } catch {}
-  setToken(f.token.value.trim(), f.remember.checked);
-  el.login.close();
-  start();
+  auth.logout();
+  try { await auth.login(); } catch (e) { openLogin(e.message); }
 });
 el.login.addEventListener('cancel', (e) => e.preventDefault());
 
 // ---------- start ----------
 async function start() {
-  const token = getToken();
-  if (!token) return openLogin();
-  const s = settings();
-  document.title = s.title || document.title;
-  $('title').textContent = s.title || 'Drzewo genealogiczne';
-  state.store = new GitHubStore({ ...s, token });
-  el.repoLink.textContent = `${s.owner}/${s.repo}`;
-  el.repoLink.href = `https://github.com/${s.owner}/${s.repo}`;
+  try { localStorage.removeItem(LS + 'settings'); localStorage.removeItem(LS + 'token'); } catch {} // z wersji z tokenem
+  document.title = CFG.title || document.title;
+  $('title').textContent = CFG.title || 'Drzewo genealogiczne';
+  el.repoLink.textContent = `${CFG.owner}/${CFG.repo}`;
+  el.repoLink.href = `https://github.com/${CFG.owner}/${CFG.repo}`;
+  let token;
+  try {
+    await auth.handleRedirect();
+    token = await auth.token();
+  } catch (e) {
+    setStatus('Niezalogowano', 'error');
+    return openLogin(e.message);
+  }
+  if (!token) { setStatus('Niezalogowano', 'idle'); return openLogin(); }
+
+  state.store = new GitHubStore({ ...CFG, token: () => auth.token(), onUnauthorized: () => auth.refresh() });
   $('menu-history').href = state.store.historyUrl();
   setStatus('Łączenie…', 'busy');
+  let user;
   try {
-    const user = await state.store.getUser();
+    user = await state.store.getUser();
     el.avatar.src = user.avatar_url;
     el.avatar.title = `Zalogowano jako ${user.login}`;
     el.avatar.hidden = false;
     await fullReload();
     restoreDraftIfAny();
     clearInterval(state.pollTimer);
-    state.pollTimer = setInterval(poll, Math.max(10, s.pollSeconds || 30) * 1000);
+    state.pollTimer = setInterval(poll, Math.max(10, CFG.pollSeconds || 30) * 1000);
   } catch (e) {
     console.error(e);
-    if (e.status === 401) { setToken(null); return openLogin('Token jest nieprawidłowy lub wygasł.'); }
+    state.store = null;
     setStatus('Błąd', 'error');
+    if (e.status === 401) { auth.logout(); return openLogin('Sesja wygasła — zaloguj się ponownie.'); }
+    if (e.status === 404 || e.status === 403) {
+      return openLogin(`Konto ${user ? user.login : ''} nie ma dostępu do repozytorium ${CFG.owner}/${CFG.repo}. `
+        + 'Poproś właściciela o zaproszenie albo zaloguj się na inne konto (najpierw wyloguj się z github.com).');
+    }
     openLogin(e.message);
   }
 }
@@ -380,7 +380,7 @@ $('menu-export').onclick = () => {
 };
 $('menu-logout').onclick = () => {
   if (dirtyCount() > 0 && !confirm('Masz niezapisane zmiany (zostaną zachowane jako szkic w tej przeglądarce). Wylogować?')) return;
-  setToken(null);
+  auth.logout();
   clearInterval(state.pollTimer);
   location.reload();
 };

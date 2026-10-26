@@ -1,0 +1,9 @@
+name = "drzewo-auth"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://nasza-rodzina-pl.github.io"
+# CLIENT_ID i CLIENT_SECRET ustaw poleceniami:
+#   npx wrangler secret put CLIENT_ID
+#   npx wrangler secret put CLIENT_SECRET

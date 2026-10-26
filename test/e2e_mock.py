@@ -4,6 +4,7 @@ Uruchom z katalogu projektu:  python3 test/e2e_mock.py
 """
 import base64, hashlib, http.server, json, os, re, sys, threading, time
 from functools import partial
+from urllib.parse import parse_qs, urlencode, urlparse
 from playwright.sync_api import sync_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -110,18 +111,63 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
 srv = http.server.ThreadingHTTPServer(('127.0.0.1', 8765), partial(Quiet, directory=ROOT))
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 
-INIT = """
-localStorage.setItem('family-tree:settings', JSON.stringify({owner:'o',repo:'r',branch:'main',dir:'people',pollSeconds:10}));
-localStorage.setItem('family-tree:token','test-token');
-"""
+PROXY = 'https://auth.example.test'
+CONFIG = ("window.FAMILY_TREE_CONFIG = {owner:'o',repo:'r',branch:'main',dir:'people',pollSeconds:10,"
+          f"clientId:'test-client',authProxy:'{PROXY}'}};")
+INIT = "localStorage.setItem('family-tree:auth', JSON.stringify({access_token:'test-token'}));"
+
+
+def route_config(route, request):
+    route.fulfill(status=200, content_type='application/javascript', body=CONFIG)
+
+
+def route_authorize(route, request):
+    """Atrapa github.com/login/oauth/authorize: od razu odsyła na stronę z kodem."""
+    q = {k: v[0] for k, v in parse_qs(urlparse(request.url).query).items()}
+    assert q['client_id'] == 'test-client' and q['code_challenge_method'] == 'S256', q
+    oauth['challenge'] = q['code_challenge']
+    route.fulfill(status=302, headers={'Location': q['redirect_uri'] + '?' + urlencode({'code': 'abc', 'state': q['state']})})
+
+
+def route_proxy(route, request):
+    if request.method == 'OPTIONS':
+        return route.fulfill(status=204, headers=CORS)
+    body = json.loads(request.post_data)
+    verifier_hash = base64.urlsafe_b64encode(hashlib.sha256(body['code_verifier'].encode()).digest()).rstrip(b'=').decode()
+    assert request.url == PROXY + '/token' and body['code'] == 'abc' and verifier_hash == oauth['challenge'], body
+    route.fulfill(status=200, content_type='application/json', headers=CORS, body=json.dumps(
+        {'access_token': 'test-token', 'expires_in': 28800, 'refresh_token': 'r1', 'refresh_token_expires_in': 15811200}))
+
+
+CORS = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type'}
+oauth = {}
 
 errors = []
 with sync_playwright() as pw:
     browser = pw.chromium.launch()
 
+    # logowanie przez GitHub: przycisk -> authorize -> powrót z kodem -> wymiana na token
+    ctx = browser.new_context(viewport={'width': 1280, 'height': 800})
+    ctx.route('**/config.js', route_config)
+    ctx.route('https://api.github.com/**', route_github)
+    ctx.route('https://github.com/login/oauth/authorize**', route_authorize)
+    ctx.route(PROXY + '/**', route_proxy)
+    page = ctx.new_page()
+    page.on('pageerror', lambda e: errors.append(f'login: {e}'))
+    page.goto('http://127.0.0.1:8765/index.html')
+    page.wait_for_selector('#login[open]')
+    page.click('#login-form button')
+    page.wait_for_function("document.querySelector('#status').dataset.state === 'ok'", timeout=15000)
+    assert 'code=' not in page.url, page.url
+    saved = json.loads(page.evaluate("localStorage.getItem('family-tree:auth')"))
+    assert saved['access_token'] == 'test-token' and saved['refresh_token'] == 'r1', saved
+    ctx.close()
+    print('logowanie: OK')
+
     def open_user(name):
         ctx = browser.new_context(viewport={'width': 1280, 'height': 800})
         ctx.add_init_script(INIT)
+        ctx.route('**/config.js', route_config)
         ctx.route('https://api.github.com/**', route_github)
         page = ctx.new_page()
         page.on('pageerror', lambda e: errors.append(f'{name}: {e}'))
