@@ -363,7 +363,7 @@ function showFrom(root) {
   chart.updateTree({ tree_position: 'fit' });
 }
 
-/** Lista w górnym pasku: „Główna linia” i rody z liczbą osób. */
+/** Lista rodów w górnym pasku, z liczbą osób. */
 function updateLineageOptions() {
   const counts = new Map();
   for (const p of realPeople()) {
@@ -376,7 +376,6 @@ function updateLineageOptions() {
   const opt = (value, text) => Object.assign(document.createElement('option'), { value, textContent: text });
   sel.replaceChildren(
     opt('', 'Pokaż ród…'),
-    opt('*', 'Główna linia'),
     ...[...counts].sort((a, b) => a[0].localeCompare(b[0], 'pl')).map(([n, c]) => opt(n, `${n} (${c})`)),
   );
 }
@@ -635,7 +634,7 @@ el.save.onclick = save;
 $('lineage').onchange = (e) => {
   const v = e.target.value;
   e.target.value = ''; // ten sam ród można wybrać ponownie
-  if (chart && v) showFrom(v === '*' ? mainLineRootId() : lineageRootId(v));
+  if (chart && v) showFrom(lineageRootId(v));
 };
 el.note.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
 el.discard.onclick = () => {

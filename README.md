@@ -79,7 +79,7 @@ test/               testy scalania (Node) i test e2e z atrapą GitHub API (Playw
 
 Pola osoby (imię, nazwisko, nazwisko rodowe, daty, miejsce urodzenia, zdjęcie, notatki) definiuje tablica `FIELDS` w `js/app.js` — możesz dopisać własne.
 
-Lista **Pokaż ród…** w górnym pasku pokazuje drzewo od pierwszego przodka wybranego nazwiska (osoby, której rodzice tego nazwiska nie noszą; przy kilku — z najdłuższą linią). O przynależności decyduje nazwisko rodowe, jeśli jest wpisane, a formy żeńskie (-ska, -cka, -dzka) są łączone z męskimi. „Główna linia” (też widok startowy) to przodek z największą liczbą potomków.
+Lista **Pokaż ród…** w górnym pasku pokazuje drzewo od pierwszego przodka wybranego nazwiska (osoby, której rodzice tego nazwiska nie noszą; przy kilku — z najdłuższą linią). O przynależności decyduje nazwisko rodowe, jeśli jest wpisane, a formy żeńskie (-ska, -cka, -dzka) są łączone z męskimi. Na starcie strona pokazuje drzewo od przodka z największą liczbą potomków.
 
 Powiązania poza drzewem (chrzestni, opiekunowie, przyjaciele, inne) definiuje tablica `LINK_TYPES` w `js/app.js`. Są zapisywane w danych osoby jako pola `link:<id drugiej osoby>` z rodzajem powiązania (np. `"link:…": "godparent"` = ta druga osoba jest chrzestnym/chrzestną); strona drugiej osoby (chrześniak) jest wyliczana przy wyświetlaniu. Dwie osoby łączy najwyżej jedno powiązanie — strona nie pozwoli dodać drugiego z żadnej strony; to samo powiązanie zapisane u obu osób (np. przy równoczesnej edycji) jest pokazywane raz i usuwane razem. Można dopisać własne rodzaje — nie zmieniaj tylko `id` istniejących, bo są zapisane w danych. Powiązania nie są rysowane liniami na wykresie (family-chart tego nie obsługuje), widać je w panelu osoby.
 
