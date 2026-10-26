@@ -194,6 +194,8 @@ with sync_playwright() as pw:
         page.locator('.card', has_text=card_text).first.click()
         page.wait_for_selector('.f3-form')
         page.wait_for_timeout(300)
+        assert page.locator('.f3-form input[type=text]').count() == 0, 'formularz powinien otworzyć się do odczytu'
+        page.click('.f3-edit-btn')
         inp = page.locator(f'.f3-form input[placeholder="{field_label}"]')
         inp.fill(value)
         page.locator('.f3-form button[type=submit]').click()
@@ -229,6 +231,7 @@ with sync_playwright() as pw:
     A.locator('.card', has_text='Anna').first.click()
     A.wait_for_selector('.f3-form')
     A.wait_for_timeout(300)
+    A.click('.f3-edit-btn')
     val = A.locator('.f3-form input[placeholder="Nazwisko rodowe"]').input_value()
     assert val == 'Kowalska', f'A nie zobaczył zmiany B: {val!r}'
     A.screenshot(path=f'{OUT}/04_A_form.png')

@@ -70,6 +70,9 @@ button.icon { padding: 4px 10px; font-size: 18px; line-height: 1; }
 }
 .menu a:hover, .menu button:hover { background: var(--line); }
 
+/* tryb odczytu: puste pola nie zajmują miejsca */
+.f3-info-field:has(.f3-info-field-value:empty) { display: none; }
+
 /* ---- dodawanie rodzeństwa w formularzu ---- */
 .f3-siblings { display: flex; gap: 8px; margin: 4px 0 12px; }
 .f3-siblings button {

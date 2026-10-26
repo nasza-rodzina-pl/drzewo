@@ -98,7 +98,7 @@ function createChart(map) {
   edit = chart.editTree()
     .fixed()
     .setFields(FIELDS)
-    .setEditFirst(true)
+    .setEditFirst(false)
     .setAddRelLabels({ father: 'Dodaj ojca', mother: 'Dodaj matkę', spouse: 'Dodaj małżonka', son: 'Dodaj syna', daughter: 'Dodaj córkę' })
     .setLinkExistingRelConfig({ title: 'Albo połącz z istniejącą osobą', select_placeholder: 'Wybierz osobę', linkRelLabel: (d) => displayName(d) })
     .setCardClickOpen(card)
@@ -109,6 +109,16 @@ function createChart(map) {
       done();
     })
     .setOnChange(onLocalChange);
+
+  // Istniejące osoby otwierają się do odczytu (edycja ołówkiem), puste karty „Nieznany” — od razu do edycji.
+  // Nowe osoby z kart „Dodaj …” biblioteka zawsze otwiera do edycji.
+  const open = edit.open.bind(edit);
+  edit.open = (d) => {
+    const p = d.rels ? d : d.data;
+    edit.setEditFirst(!!(p.unknown || p.to_add));
+    open(d);
+    edit.setEditFirst(false);
+  };
 
   chart.setPersonDropdown((d) => displayName(d), { placeholder: 'Szukaj osoby' });
 
@@ -155,7 +165,9 @@ function addSibling(id, gender) {
   }
   data.push(sibling);
   chart.updateTree({ tree_position: 'inherit' });
+  edit.setEditFirst(true);
   edit.openFormWithId(sibling.id);
+  edit.setEditFirst(false);
   onLocalChange();
 }
 
