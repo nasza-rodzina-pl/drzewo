@@ -29,7 +29,7 @@ const redirectUri = () => location.origin + location.pathname;
 export class Auth {
   constructor({ clientId, authProxy }) {
     this.clientId = clientId;
-    this.proxy = (authProxy || '').replace(/\/+$/, '');
+    this.proxy = (authProxy || '').replace(/\/+$/, '').replace(/^(?!https?:\/\/)(?=.)/, 'https://');
     this.refreshing = null;
   }
 
