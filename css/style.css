@@ -70,6 +70,14 @@ button.icon { padding: 4px 10px; font-size: 18px; line-height: 1; }
 }
 .menu a:hover, .menu button:hover { background: var(--line); }
 
+/* ---- dodawanie rodzeństwa w formularzu ---- */
+.f3-siblings { display: flex; gap: 8px; margin: 4px 0 12px; }
+.f3-siblings button {
+  flex: 1; padding: 8px 10px; border-radius: var(--radius); border: 1px dashed var(--line);
+  background: none; color: var(--text); font-size: 13px; cursor: pointer;
+}
+.f3-siblings button:hover { border-color: var(--accent); color: var(--accent); }
+
 /* ---- baner ---- */
 .banner {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;

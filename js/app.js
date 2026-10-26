@@ -84,7 +84,9 @@ function createChart(map) {
     .setTransitionTime(700)
     .setCardXSpacing(260)
     .setCardYSpacing(160)
-    .setSingleParentEmptyCard(true, { label: 'Nieznany' });
+    .setSingleParentEmptyCard(true, { label: 'Nieznany' })
+    .setShowSiblingsOfMain(true);
+  chart.store.state.unknown_card_label = 'Nieznany'; // biblioteka nie ma do tego settera
 
   card = chart.setCardHtml()
     .setCardDisplay([['first name', 'last name'], ['birthday', 'death']])
@@ -100,12 +102,55 @@ function createChart(map) {
     .setAddRelLabels({ father: 'Dodaj ojca', mother: 'Dodaj matkę', spouse: 'Dodaj małżonka', son: 'Dodaj syna', daughter: 'Dodaj córkę' })
     .setLinkExistingRelConfig({ title: 'Albo połącz z istniejącą osobą', select_placeholder: 'Wybierz osobę', linkRelLabel: (d) => displayName(d) })
     .setCardClickOpen(card)
+    .setOnFormCreation(addSiblingButtons)
     .setOnChange(onLocalChange);
 
   chart.setPersonDropdown((d) => displayName(d), { placeholder: 'Szukaj osoby' });
 
   chart.updateTree({ initial: true });
   // jeśli repo puste, osoba startowa jest zmianą do zapisania
+  onLocalChange();
+}
+
+// family-chart nie ma „dodaj brata/siostrę” — rodzeństwo to kolejne dziecko tych samych rodziców.
+function addSiblingButtons({ cont, form_creator }) {
+  const d = chart.store.getDatum(form_creator.datum_id);
+  const submitRow = cont.querySelector('form button[type=submit]')?.parentElement;
+  if (!d || !submitRow || d._new_rel_data || d.unknown || d.to_add) return;
+  const box = document.createElement('div');
+  box.className = 'f3-siblings';
+  for (const [gender, label] of [['M', 'Dodaj brata'], ['F', 'Dodaj siostrę']]) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.onclick = () => addSibling(d.id, gender);
+    box.append(b);
+  }
+  submitRow.before(box);
+}
+
+function addSibling(id, gender) {
+  const data = chart.store.getData();
+  const person = data.find((p) => p.id === id);
+  person.rels.parents ||= [];
+  if (!person.rels.parents.length) {
+    // bez rodziców: wspólny rodzic „Nieznany”, którego można później uzupełnić
+    const parent = { id: crypto.randomUUID(), data: { gender: 'M' }, rels: { parents: [], spouses: [], children: [id] }, unknown: true };
+    person.rels.parents.push(parent.id);
+    data.push(parent);
+  }
+  const sibling = {
+    id: crypto.randomUUID(),
+    data: { gender, ...(person.data['last name'] ? { 'last name': person.data['last name'] } : {}) },
+    rels: { parents: [...person.rels.parents], spouses: [], children: [] },
+  };
+  for (const pid of sibling.rels.parents) {
+    const parent = data.find((p) => p.id === pid);
+    (parent.rels.children ||= []).push(sibling.id);
+  }
+  data.push(sibling);
+  chart.updateTree({ tree_position: 'inherit' });
+  edit.openFormWithId(sibling.id);
   onLocalChange();
 }
 
