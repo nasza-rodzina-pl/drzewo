@@ -305,6 +305,37 @@ function showPerson(id) {
   edit.open(chart.store.getDatum(id));
 }
 
+/**
+ * family-chart rysuje przodków i potomków osoby głównej, więc „całe drzewo” to widok od przodka
+ * (osoby bez rodziców), który ma najwięcej potomków razem z ich małżonkami.
+ */
+function showWholeTree() {
+  const data = chart.store.getData().filter((p) => !p._new_rel_data && !p.to_add);
+  const byId = new Map(data.map((p) => [p.id, p]));
+  const reach = (rootId) => {
+    const seen = new Set();
+    const visit = (id) => {
+      const p = byId.get(id);
+      if (!p || seen.has(id)) return;
+      seen.add(id);
+      for (const s of p.rels.spouses || []) if (byId.has(s)) seen.add(s);
+      for (const c of p.rels.children || []) visit(c);
+    };
+    visit(rootId);
+    return seen.size;
+  };
+  let best = null, bestSize = 0;
+  for (const p of data) {
+    if ((p.rels.parents || []).length) continue;
+    const size = reach(p.id);
+    if (size > bestSize) { best = p; bestSize = size; }
+  }
+  if (!best) return;
+  edit.closeForm();
+  chart.updateMainId(best.id);
+  chart.updateTree({ tree_position: 'fit' });
+}
+
 function refreshChart(map) {
   if (!chart) return createChart(map);
   if (edit) edit.closeForm();
@@ -554,6 +585,7 @@ async function start() {
 
 // ---------- przyciski ----------
 el.save.onclick = save;
+$('btn-whole').onclick = () => chart && showWholeTree();
 el.note.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
 el.discard.onclick = () => {
   if (!confirm('Odrzucić wszystkie niezapisane zmiany?')) return;
