@@ -102,9 +102,10 @@ function createChart(map) {
 
   card = chart.setCardHtml()
     .setCardDisplay([
+      // znacznik card-deceased przygasza kafelek (css/style.css)
       (p) => esc([p.data['first name'], p.data['last name']].filter(Boolean).join(' '))
-        + (p.data.death ? ' <span class="card-cross" title="Nie żyje">†</span>' : ''),
-      (p) => esc([p.data.birthday, p.data.death && `† ${p.data.death}`].filter(Boolean).join(' – ')),
+        + (p.data.death ? '<span class="card-deceased" hidden></span>' : ''),
+      (p) => esc(p.data.death ? `${p.data.birthday || '?'} – ${p.data.death}` : p.data.birthday),
     ])
     .setCardImageField('avatar')
     .setMiniTree(true)
