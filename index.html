@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Drzewo genealogiczne</title>
+  <link rel="stylesheet" href="vendor/family-chart.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v6M12 9l-6 5M12 9l6 5M6 14v4M18 14v4M12 9v9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="3.5" r="1.8"/><circle cx="6" cy="19" r="1.8"/><circle cx="12" cy="19" r="1.8"/><circle cx="18" cy="19" r="1.8"/></svg>
+      <div>
+        <h1 id="title">Drzewo genealogiczne</h1>
+        <a id="repo-link" class="repo" target="_blank" rel="noopener"></a>
+      </div>
+    </div>
+
+    <div class="actions">
+      <span id="status" class="status" data-state="idle">Łączenie…</span>
+      <input id="commit-note" type="text" placeholder="Opis zmian (opcjonalnie)" maxlength="120" hidden>
+      <button id="btn-discard" class="ghost" hidden>Odrzuć</button>
+      <button id="btn-save" class="primary" disabled>Zapisz</button>
+      <button id="btn-menu" class="icon" aria-label="Menu" title="Menu">⋯</button>
+      <div id="menu" class="menu" hidden>
+        <a id="menu-history" target="_blank" rel="noopener">Historia zmian w GitHubie</a>
+        <button id="menu-reload">Wczytaj ponownie</button>
+        <button id="menu-export">Pobierz dane (JSON)</button>
+        <button id="menu-logout">Wyloguj (usuń token)</button>
+      </div>
+      <img id="avatar" class="avatar" alt="" hidden>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden>
+    <span id="banner-text"></span>
+    <span class="banner-actions"></span>
+  </div>
+
+  <main id="FamilyChart" class="f3"></main>
+
+  <dialog id="login">
+    <form method="dialog" id="login-form">
+      <h2>Połącz z repozytorium</h2>
+      <p class="muted">Dane drzewa są przechowywane w repozytorium GitHuba. Do odczytu i zapisu potrzebny jest Twój osobisty token dostępu.</p>
+      <div class="grid">
+        <label>Właściciel<input name="owner" required autocomplete="off"></label>
+        <label>Repozytorium<input name="repo" required autocomplete="off"></label>
+        <label>Gałąź<input name="branch" required autocomplete="off"></label>
+        <label>Katalog danych<input name="dir" required autocomplete="off"></label>
+      </div>
+      <label>Token (fine-grained PAT, uprawnienie <b>Contents: Read and write</b>)
+        <input name="token" type="password" required autocomplete="off" spellcheck="false">
+      </label>
+      <label class="check"><input name="remember" type="checkbox" checked> Zapamiętaj token w tej przeglądarce</label>
+      <p class="muted small"><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Utwórz token na GitHubie →</a></p>
+      <p id="login-error" class="error" hidden></p>
+      <div class="dialog-actions"><button class="primary" value="ok">Połącz</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="vendor/d3.min.js"></script>
+  <script src="vendor/family-chart.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
