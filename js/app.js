@@ -200,14 +200,18 @@ function linkValue(personId, key) {
   return op ? op.value : chart.store.getDatum(personId)?.data[key] || null;
 }
 
-/** Powiązania osoby id: zapisane u niej i u innych osób (wskazujące na nią), z uwzględnieniem niezatwierdzonych zmian. */
+/**
+ * Powiązania osoby id: zapisane u niej i u innych osób (wskazujące na nią), z uwzględnieniem niezatwierdzonych zmian.
+ * To samo powiązanie zapisane z obu stron (np. „przyjaciel” dodany równolegle u obu osób) jest jedną pozycją
+ * z kilkoma wpisami w slots — usunięcie usuwa wszystkie.
+ */
 function linksOf(id) {
   const slots = new Map();
   const add = (personId, key) => slots.set(`${personId}|${key}`, { personId, key });
   for (const k of Object.keys(chart.store.getDatum(id).data)) if (k.startsWith(LINK_PREFIX)) add(id, k);
   for (const p of chart.store.getData()) if (p.id !== id && p.data[LINK_PREFIX + id]) add(p.id, LINK_PREFIX + id);
   for (const op of linkEdit.ops.values()) if (op.personId === id || op.key === LINK_PREFIX + id) add(op.personId, op.key);
-  const out = [];
+  const out = new Map();
   for (const { personId, key } of slots.values()) {
     const type = LINK_TYPES.find((t) => t.id === linkValue(personId, key));
     const otherId = personId === id ? key.slice(LINK_PREFIX.length) : personId;
@@ -215,9 +219,11 @@ function linksOf(id) {
     if (!type || !other) continue;
     const g = genderOf(other);
     const label = personId !== id && type.inverse ? type.inverse[g] : type.label[g];
-    out.push({ personId, key, otherId, other, label });
+    const same = out.get(`${otherId}|${label}`);
+    if (same) same.slots.push({ personId, key });
+    else out.set(`${otherId}|${label}`, { slots: [{ personId, key }], otherId, other, label });
   }
-  return out.sort((a, b) => a.label.localeCompare(b.label, 'pl') || displayName(a.other).localeCompare(displayName(b.other), 'pl'));
+  return [...out.values()].sort((a, b) => a.label.localeCompare(b.label, 'pl') || displayName(a.other).localeCompare(displayName(b.other), 'pl'));
 }
 
 function applyLinkOps() {
@@ -243,8 +249,8 @@ function addLinksSection({ cont, form_creator }) {
 
 function renderLinks(box, d, editable) {
   const make = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
-  const setOp = (personId, key, value) => {
-    linkEdit.ops.set(`${personId}|${key}`, { personId, key, value });
+  const setOps = (slots, value) => {
+    for (const { personId, key } of slots) linkEdit.ops.set(`${personId}|${key}`, { personId, key, value });
     renderLinks(box, d, editable);
   };
   const links = linksOf(d.id);
@@ -257,7 +263,7 @@ function renderLinks(box, d, editable) {
       ? make('span', { textContent: displayName(l.other) })
       : make('button', { type: 'button', className: 'f3-link-name', textContent: displayName(l.other), title: 'Pokaż tę osobę', onclick: () => showPerson(l.otherId) });
     const row = make('div', { className: 'f3-link' }, make('span', { className: 'f3-link-label', textContent: `${l.label}:` }), name);
-    if (editable) row.append(make('button', { type: 'button', className: 'f3-link-remove', textContent: '×', title: 'Usuń powiązanie', onclick: () => setOp(l.personId, l.key, null) }));
+    if (editable) row.append(make('button', { type: 'button', className: 'f3-link-remove', textContent: '×', title: 'Usuń powiązanie', onclick: () => setOps(l.slots, null) }));
     box.append(row);
   }
 
@@ -275,9 +281,12 @@ function renderLinks(box, d, editable) {
   const addBtn = make('button', { type: 'button', textContent: 'Dodaj', onclick: () => {
     const type = typeSel.value, other = personSel.value;
     if (!type || !other) return toast('Wybierz rodzaj powiązania i osobę');
+    // jedna para osób = jedno powiązanie (w danych to jedno pole), niezależnie od strony, po której je zapisano
+    const existing = links.find((l) => l.otherId === other);
+    if (existing) return toast(`${displayName(d)} i ${displayName(existing.other)} są już powiązani (${existing.label.toLowerCase()}). Aby to zmienić, usuń najpierw obecne powiązanie.`, 6000);
     // „~typ” = druga osoba jest np. chrześniakiem tej osoby, więc wpis trafia do jej danych
-    if (type.startsWith('~')) setOp(other, LINK_PREFIX + d.id, type.slice(1));
-    else setOp(d.id, LINK_PREFIX + other, type);
+    if (type.startsWith('~')) setOps([{ personId: other, key: LINK_PREFIX + d.id }], type.slice(1));
+    else setOps([{ personId: d.id, key: LINK_PREFIX + other }], type);
   } });
   box.append(make('div', { className: 'f3-link-add' }, typeSel, personSel, addBtn));
 }
