@@ -306,7 +306,7 @@ function showPerson(id) {
 }
 
 /**
- * family-chart rysuje przodków i potomków osoby głównej, więc „całe drzewo” to widok od przodka
+ * family-chart rysuje przodków i potomków osoby głównej, więc „główna linia” to widok od przodka
  * (osoby bez rodziców), który ma najwięcej potomków razem z ich małżonkami.
  */
 function showWholeTree() {
