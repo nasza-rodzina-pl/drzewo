@@ -656,16 +656,16 @@ $('menu-export').onclick = () => {
   a.click();
   URL.revokeObjectURL(a.href);
 };
-function logout(then) {
+// Wylogowuje z aplikacji i z GitHuba, inaczej kolejne „Zaloguj” wpuściłoby od razu to samo konto.
+// GitHub nie pozwala wylogować z zewnątrz — jego strona wylogowania wymaga kliknięcia „Sign out”.
+function logout() {
   if (dirtyCount() > 0 && !confirm('Masz niezapisane zmiany (zostaną zachowane jako szkic w tej przeglądarce). Wylogować?')) return;
   auth.logout();
   clearInterval(state.pollTimer);
   state.store = null; // szkic jest już zapisany, bez pytania „opuścić stronę?”
-  then();
+  location.assign('https://github.com/logout');
 }
-$('menu-logout').onclick = () => logout(() => location.reload());
-// GitHub nie pozwala wylogować z zewnątrz — jego strona wylogowania wymaga kliknięcia „Sign out”.
-$('menu-logout-github').onclick = () => logout(() => location.assign('https://github.com/logout'));
+$('menu-logout').onclick = logout;
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
 });

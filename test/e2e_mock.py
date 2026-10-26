@@ -162,11 +162,11 @@ with sync_playwright() as pw:
     saved = json.loads(page.evaluate("localStorage.getItem('family-tree:auth')"))
     assert saved['access_token'] == 'test-token' and saved['refresh_token'] == 'r1', saved
 
-    # wylogowanie także z GitHuba: token usunięty, przejście na github.com/logout
+    # wylogowanie (zawsze także z GitHuba): token usunięty, przejście na github.com/logout
     ctx.route('https://github.com/logout', lambda route, req: route.fulfill(status=200, content_type='text/html', body='logout'))
     page.click('#btn-menu')
     with page.expect_navigation(url='https://github.com/logout'):
-        page.click('#menu-logout-github')
+        page.click('#menu-logout')
     page.goto('http://127.0.0.1:8765/index.html')
     assert page.evaluate("localStorage.getItem('family-tree:auth')") is None
     page.wait_for_selector('#login[open]')
