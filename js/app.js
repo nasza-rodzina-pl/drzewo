@@ -644,7 +644,13 @@ el.discard.onclick = () => {
   refreshChart(state.base);
   updateDirtyUi();
 };
-$('btn-menu').onclick = (e) => { e.stopPropagation(); el.menu.hidden = !el.menu.hidden; };
+const showAdvanced = (open) => {
+  $('menu-advanced-items').hidden = !open;
+  $('menu-advanced').setAttribute('aria-expanded', open);
+};
+$('btn-menu').onclick = (e) => { e.stopPropagation(); showAdvanced(false); el.menu.hidden = !el.menu.hidden; };
+// „Zaawansowane” rozwija podmenu i nie zamyka menu
+$('menu-advanced').onclick = (e) => { e.stopPropagation(); showAdvanced($('menu-advanced-items').hidden); };
 document.addEventListener('click', () => (el.menu.hidden = true));
 $('menu-reload').onclick = async () => {
   if (dirtyCount() > 0) { await pullAndMerge(); toast('Scalono z aktualnym stanem repozytorium'); }

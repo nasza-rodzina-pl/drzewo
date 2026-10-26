@@ -171,11 +171,14 @@ with sync_playwright() as pw:
     for item in ('#menu-history', '#menu-export'):
         answer(False)
         page.click('#btn-menu')
+        assert not page.is_visible(item)  # schowane w „Zaawansowane”
+        page.click('#menu-advanced')
         page.click(item)
     page.wait_for_timeout(500)
     assert len(ctx.pages) == 1 and not downloads, (ctx.pages, downloads)
     answer(True)
     page.click('#btn-menu')
+    page.click('#menu-advanced')
     with page.expect_download() as dl:
         page.click('#menu-export')
     assert dl.value.suggested_filename == 'drzewo.json'

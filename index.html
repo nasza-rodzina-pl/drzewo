@@ -25,9 +25,12 @@
       <button id="btn-save" class="primary" disabled>Zapisz</button>
       <button id="btn-menu" class="icon" aria-label="Menu" title="Menu">⋯</button>
       <div id="menu" class="menu" hidden>
-        <a id="menu-history" target="_blank" rel="noopener">Historia zmian w GitHubie</a>
         <button id="menu-reload">Wczytaj ponownie</button>
-        <button id="menu-export">Pobierz dane (JSON)</button>
+        <button id="menu-advanced" aria-expanded="false">Zaawansowane <span class="menu-arrow">▸</span></button>
+        <div id="menu-advanced-items" class="menu-sub" hidden>
+          <a id="menu-history" target="_blank" rel="noopener">Historia zmian w GitHubie</a>
+          <button id="menu-export">Pobierz dane (JSON)</button>
+        </div>
         <button id="menu-logout">Wyloguj</button>
       </div>
       <img id="avatar" class="avatar" alt="" hidden>
