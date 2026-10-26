@@ -37,8 +37,8 @@ Użytkownicy logują się kontem GitHub — nikt nie tworzy tokenów. Potrzebne 
 **a) Aplikacja GitHub** — *Settings → Developer settings → GitHub Apps → New GitHub App* (na koncie właściciela repo z danymi):
 
 - **GitHub App name**: dowolna, np. `Drzewo nasza-rodzina`,
-- **Homepage URL** i **Callback URL**: adres strony, np. `https://nasza-rodzina-pl.github.io/drzewo/` (dokładnie, ze `/` na końcu),
-- **Expire user authorization tokens**: zaznaczone (token ważny 8 h, odświeżany automatycznie),
+- **Homepage URL** i **Callback URL** (na niektórych ekranach: **Redirect URI**): adres strony, np. `https://nasza-rodzina-pl.github.io/drzewo/` (dokładnie, ze `/` na końcu),
+- **Expire user authorization tokens**: jeśli ta opcja jest dostępna, zaznacz ją (token ważny 8 h, odświeżany automatycznie); jeśli jej nie ma, nic nie szkodzi — strona obsługuje też tokeny bez terminu ważności,
 - **Webhook → Active**: odznacz,
 - **Repository permissions → Contents: Read and write** (Metadata: Read-only dodaje się samo), nic więcej,
 - **Where can this GitHub App be installed?**: *Only on this account*.
@@ -89,7 +89,7 @@ python3 test/e2e_mock.py          # logowanie + dwóch użytkowników edytuje r�
 
 ## Ograniczenia
 
-- Token logowania leży w `localStorage` — nie dodawaj na stronę skryptów z niezaufanych źródeł. Działa tylko dla repozytoriów, na których zainstalowano aplikację, i wygasa po 8 h (odświeżany automatycznie).
+- Token logowania leży w `localStorage` — nie dodawaj na stronę skryptów z niezaufanych źródeł. Działa tylko dla repozytoriów, na których zainstalowano aplikację, i zwykle wygasa po 8 h (odświeżany automatycznie).
 - Limit API: 5000 zapytań/h na osobę; wczytanie drzewa to ~3 zapytania + 1 na każdy *zmieniony* plik (bloby są cache'owane).
 - Przy bardzo dużych drzewach (dziesiątki tysięcy plików) API może obciąć listę plików — wtedy warto przejść na jeden plik zbiorczy.
 - Zdjęcia są podawane jako URL; przechowywanie plików graficznych w repo nie jest (jeszcze) obsługiwane.
