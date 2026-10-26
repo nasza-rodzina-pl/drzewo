@@ -44,6 +44,8 @@ const state = {
 let chart, card, edit;
 
 const $ = (id) => document.getElementById(id);
+// rok z daty w dowolnym formacie („12.03.1920”, „1920-03-12”, „ok. 1920”); bez roku — cały tekst
+const year = (date) => (date ? String(date).match(/\b\d{4}\b/)?.[0] || date : '');
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const el = {
   status: $('status'), save: $('btn-save'), discard: $('btn-discard'), note: $('commit-note'),
@@ -105,7 +107,7 @@ function createChart(map) {
       // znacznik card-deceased przygasza kafelek (css/style.css)
       (p) => esc([p.data['first name'], p.data['last name']].filter(Boolean).join(' '))
         + (p.data.death ? '<span class="card-deceased" hidden></span>' : ''),
-      (p) => esc(p.data.death ? `${p.data.birthday || '?'} – ${p.data.death}` : p.data.birthday),
+      (p) => esc([year(p.data.birthday), p.data.death && `† ${year(p.data.death)}`].filter(Boolean).join(' – ')),
     ])
     .setCardImageField('avatar')
     .setMiniTree(true)
