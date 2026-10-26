@@ -46,6 +46,12 @@ let chart, card, edit;
 const $ = (id) => document.getElementById(id);
 // rok z daty w dowolnym formacie („12.03.1920”, „1920-03-12”, „ok. 1920”); bez roku — cały tekst
 const year = (date) => (date ? String(date).match(/\b\d{4}\b/)?.[0] || date : '');
+// Ikony osób bez zdjęcia: kobieta ma kok, żeby kafelki różniły się nie tylko kolorem.
+const SHOULDERS_M = '<path d="M96 312h320c53 0 96 43 96 96v72c0 18-14 32-32 32H32c-18 0-32-14-32-32v-72c0-53 43-96 96-96z"/>';
+const SHOULDERS_F = '<path d="M150 318h212c46 0 84 34 92 80l14 82c3 18-11 32-29 32H73c-18 0-32-14-29-32l14-82c8-46 46-80 92-80z"/>';
+const personIcon = (paths) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="fill: currentColor">${paths}</svg>`;
+const ICON_M = personIcon('<circle cx="256" cy="130" r="116"/>' + SHOULDERS_M);
+const ICON_F = personIcon('<circle cx="256" cy="44" r="44"/><circle cx="256" cy="150" r="96"/>' + SHOULDERS_F);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const el = {
   status: $('status'), save: $('btn-save'), discard: $('btn-discard'), note: $('commit-note'),
@@ -110,6 +116,7 @@ function createChart(map) {
       (p) => esc([year(p.data.birthday), p.data.death && `† ${year(p.data.death)}`].filter(Boolean).join(' – ')),
     ])
     .setCardImageField('avatar')
+    .setDefaultPersonIcon((d) => (d.data.data.gender === 'F' ? ICON_F : ICON_M))
     .setMiniTree(true)
     .setStyle('imageRect')
     .setOnHoverPathToMain();
