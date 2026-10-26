@@ -251,6 +251,24 @@ with sync_playwright() as pw:
     a = json.loads(git.files_at(git.head)['people/a.json'])
     assert a['data']['birthday'] == '1949', a
     B.screenshot(path=f'{OUT}/05_B_conflict.png')
+
+    # Powiązanie poza drzewem: Anna chrzestną Piotra, zapisane w pliku Piotra
+    A.wait_for_timeout(1500)
+    A.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    A.wait_for_timeout(1000)
+    A.locator('.card', has_text='Piotr').first.click()
+    A.wait_for_selector('.f3-form')
+    A.click('.f3-edit-btn')
+    A.select_option('.f3-link-add select >> nth=0', 'godparent')
+    A.select_option('.f3-link-add select >> nth=1', label='Anna Nowak')
+    A.click('.f3-link-add button')
+    A.click('.f3-form button[type=submit]')
+    A.wait_for_timeout(500)
+    assert 'Chrzestna' in A.inner_text('.f3-links'), A.inner_text('.f3-links')
+    A.click('#btn-save')
+    A.wait_for_function("document.querySelector('#status').dataset.state === 'ok'", timeout=10000)
+    c = json.loads(git.files_at(git.head)['people/c.json'])
+    assert c['data'].get('link:b') == 'godparent', c
     print('commity:', git.commits_log)
     browser.close()
 

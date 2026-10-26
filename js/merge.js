@@ -147,7 +147,13 @@ export function merge3(base, mine, theirs) {
 }
 
 /** Usuwa odwołania do nieistniejących osób i uzupełnia relacje dwustronne. */
+/** Pole danych z powiązaniem poza drzewem: data[`link:<id X>`] = typ („X jest dla tej osoby: typ”). */
+export const LINK_PREFIX = 'link:';
+
 export function repairIntegrity(map) {
+  for (const p of map.values())
+    for (const k of Object.keys(p.data))
+      if (k.startsWith(LINK_PREFIX) && (k === LINK_PREFIX + p.id || !map.has(k.slice(LINK_PREFIX.length)))) delete p.data[k];
   for (const p of map.values())
     for (const k of REL_KEYS) p.rels[k] = p.rels[k].filter((id) => map.has(id) && id !== p.id);
   const ensure = (id, key, val) => {

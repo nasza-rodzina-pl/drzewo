@@ -73,6 +73,26 @@ button.icon { padding: 4px 10px; font-size: 18px; line-height: 1; }
 /* tryb odczytu: puste pola nie zajmują miejsca */
 .f3-info-field:has(.f3-info-field-value:empty) { display: none; }
 
+/* ---- powiązania (chrzestni itp.) ---- */
+.f3-links { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 12px; font-size: 13px; }
+.f3-links-title { font-weight: 600; font-size: 12px; color: var(--muted); }
+.f3-link { display: flex; align-items: center; gap: 6px; }
+.f3-link-label { color: var(--muted); }
+.f3-form .f3-link-name { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-size: 13px; text-align: left; margin: 0; }
+.f3-link-name:hover { text-decoration: underline; }
+.f3-form .f3-link-remove { background: none; border: 0; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 4px; margin: 0 0 0 auto; }
+.f3-form .f3-link-remove:hover { color: var(--err); }
+.f3-link-add { display: flex; gap: 6px; }
+.f3-form .f3-link-add select {
+  flex: 1; width: auto; min-width: 0; margin: 0; padding: 6px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius); font-size: 13px;
+}
+.f3-form .f3-link-add button {
+  margin: 0; padding: 6px 10px; background: none; color: var(--text); border: 1px dashed var(--line);
+  border-radius: var(--radius); font-size: 13px; cursor: pointer;
+}
+.f3-form .f3-link-add button:hover { border-color: var(--accent); color: var(--accent); }
+
 /* ---- dodawanie rodzeństwa w formularzu ---- */
 .f3-siblings { display: flex; gap: 8px; margin: 4px 0 12px; }
 .f3-siblings button {

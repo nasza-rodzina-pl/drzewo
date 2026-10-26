@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { toMap, merge3, diff, serializePerson, commitMessage } from '../js/merge.js';
+import { toMap, merge3, diff, serializePerson, commitMessage, repairIntegrity } from '../js/merge.js';
 
 const P = (id, data = {}, rels = {}) => ({ id, data: { gender: 'M', ...data }, rels });
 const base = toMap([
@@ -74,4 +74,22 @@ test('serializacja jest stabilna', () => {
   const s1 = serializePerson({ id: 'x', data: { b: 1, a: 2, gender: 'F' }, rels: {} });
   const s2 = serializePerson({ id: 'x', rels: { children: [] }, data: { gender: 'F', a: 2, b: 1 } });
   assert.equal(s1, s2);
+});
+
+test('powiązania: równoległe dodanie różnych chrzestnych łączy się bez konfliktu', () => {
+  const mine = clone(base); mine.get('c').data['link:a'] = 'godparent';
+  const theirs = clone(base); theirs.get('c').data['link:b'] = 'godparent';
+  const { result, conflicts } = merge3(base, mine, theirs);
+  assert.equal(conflicts.length, 0);
+  assert.equal(result.get('c').data['link:a'], 'godparent');
+  assert.equal(result.get('c').data['link:b'], 'godparent');
+});
+
+test('powiązania do usuniętej osoby i do siebie są usuwane', () => {
+  const m = clone(base);
+  m.get('c').data['link:zzz'] = 'godparent';
+  m.get('c').data['link:c'] = 'friend';
+  m.get('c').data['link:a'] = 'godparent';
+  repairIntegrity(m);
+  assert.deepEqual(Object.keys(m.get('c').data).filter((k) => k.startsWith('link:')), ['link:a']);
 });

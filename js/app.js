@@ -1,6 +1,6 @@
 import { GitHubStore, ConflictError } from './github.js';
 import { Auth } from './auth.js';
-import { toMap, toList, merge3, diff, commitMessage, displayName, normalizePerson, repairIntegrity } from './merge.js';
+import { toMap, toList, merge3, diff, commitMessage, displayName, normalizePerson, repairIntegrity, LINK_PREFIX } from './merge.js';
 import { translateTree } from './i18n.js';
 
 const f3 = window.f3;
@@ -18,6 +18,17 @@ const FIELDS = [
   { type: 'text', label: 'Data śmierci', id: 'death' },
   { type: 'text', label: 'Zdjęcie (URL)', id: 'avatar' },
   { type: 'textarea', label: 'Notatki', id: 'notes' },
+];
+
+// Powiązania poza drzewem. label: kim jest druga osoba (wg jej płci); inverse: jak to wygląda z jej strony.
+// Typy bez inverse są symetryczne. Identyfikatorów (id) nie zmieniaj — są zapisane w danych.
+const LINK_TYPES = [
+  { id: 'godparent', name: 'Chrzestny / chrzestna', label: { M: 'Chrzestny', F: 'Chrzestna' },
+    inverseName: 'Chrześniak / chrześniaczka', inverse: { M: 'Chrześniak', F: 'Chrześniaczka' } },
+  { id: 'guardian', name: 'Opiekun / opiekunka', label: { M: 'Opiekun', F: 'Opiekunka' },
+    inverseName: 'Podopieczny / podopieczna', inverse: { M: 'Podopieczny', F: 'Podopieczna' } },
+  { id: 'friend', name: 'Przyjaciel / przyjaciółka', label: { M: 'Przyjaciel', F: 'Przyjaciółka' } },
+  { id: 'other', name: 'Inne powiązanie', label: { M: 'Powiązanie', F: 'Powiązanie' } },
 ];
 
 // ---------- stan ----------
@@ -102,7 +113,13 @@ function createChart(map) {
     .setAddRelLabels({ father: 'Dodaj ojca', mother: 'Dodaj matkę', spouse: 'Dodaj małżonka', son: 'Dodaj syna', daughter: 'Dodaj córkę' })
     .setLinkExistingRelConfig({ title: 'Albo połącz z istniejącą osobą', select_placeholder: 'Wybierz osobę', linkRelLabel: (d) => displayName(d) })
     .setCardClickOpen(card)
-    .setOnFormCreation(addSiblingButtons)
+    .setOnFormCreation((args) => { addLinksSection(args); addSiblingButtons(args); })
+    .setOnSubmit((ev, datum, applyForm, done) => {
+      ev.preventDefault();
+      applyForm();
+      applyLinkOps();
+      done();
+    })
     .setOnDelete((d, deletePerson, done) => {
       if (!confirm(`Czy na pewno chcesz usunąć osobę ${displayName(d)}?`)) return;
       deletePerson();
@@ -169,6 +186,106 @@ function addSibling(id, gender) {
   edit.openFormWithId(sibling.id);
   edit.setEditFirst(false);
   onLocalChange();
+}
+
+// ---------- powiązania (chrzestni itp.) ----------
+// Niezatwierdzone zmiany powiązań w otwartym formularzu: "osoba|pole" -> { personId, key, value }.
+let linkEdit = { id: null, ops: new Map() };
+
+const isPlaceholder = (p) => !p || p._new_rel_data || p.unknown || p.to_add;
+const genderOf = (p) => (p?.data.gender === 'F' ? 'F' : 'M');
+
+function linkValue(personId, key) {
+  const op = linkEdit.ops.get(`${personId}|${key}`);
+  return op ? op.value : chart.store.getDatum(personId)?.data[key] || null;
+}
+
+/** Powiązania osoby id: zapisane u niej i u innych osób (wskazujące na nią), z uwzględnieniem niezatwierdzonych zmian. */
+function linksOf(id) {
+  const slots = new Map();
+  const add = (personId, key) => slots.set(`${personId}|${key}`, { personId, key });
+  for (const k of Object.keys(chart.store.getDatum(id).data)) if (k.startsWith(LINK_PREFIX)) add(id, k);
+  for (const p of chart.store.getData()) if (p.id !== id && p.data[LINK_PREFIX + id]) add(p.id, LINK_PREFIX + id);
+  for (const op of linkEdit.ops.values()) if (op.personId === id || op.key === LINK_PREFIX + id) add(op.personId, op.key);
+  const out = [];
+  for (const { personId, key } of slots.values()) {
+    const type = LINK_TYPES.find((t) => t.id === linkValue(personId, key));
+    const otherId = personId === id ? key.slice(LINK_PREFIX.length) : personId;
+    const other = chart.store.getDatum(otherId);
+    if (!type || !other) continue;
+    const g = genderOf(other);
+    const label = personId !== id && type.inverse ? type.inverse[g] : type.label[g];
+    out.push({ personId, key, otherId, other, label });
+  }
+  return out.sort((a, b) => a.label.localeCompare(b.label, 'pl') || displayName(a.other).localeCompare(displayName(b.other), 'pl'));
+}
+
+function applyLinkOps() {
+  for (const { personId, key, value } of linkEdit.ops.values()) {
+    const p = chart.store.getDatum(personId);
+    if (!p) continue;
+    if (value) p.data[key] = value;
+    else delete p.data[key];
+  }
+  linkEdit.ops.clear();
+}
+
+function addLinksSection({ cont, form_creator }) {
+  const d = chart.store.getDatum(form_creator.datum_id);
+  const submitRow = cont.querySelector('form button[type=submit]')?.parentElement;
+  if (isPlaceholder(d) || !submitRow) return;
+  if (linkEdit.id !== d.id || !form_creator.editable) linkEdit = { id: d.id, ops: new Map() };
+  const box = document.createElement('div');
+  box.className = 'f3-links';
+  submitRow.before(box);
+  renderLinks(box, d, form_creator.editable);
+}
+
+function renderLinks(box, d, editable) {
+  const make = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+  const setOp = (personId, key, value) => {
+    linkEdit.ops.set(`${personId}|${key}`, { personId, key, value });
+    renderLinks(box, d, editable);
+  };
+  const links = linksOf(d.id);
+  box.replaceChildren();
+  if (!links.length && !editable) return;
+  box.append(make('div', { className: 'f3-links-title', textContent: 'Powiązania' }));
+
+  for (const l of links) {
+    const name = editable
+      ? make('span', { textContent: displayName(l.other) })
+      : make('button', { type: 'button', className: 'f3-link-name', textContent: displayName(l.other), title: 'Pokaż tę osobę', onclick: () => showPerson(l.otherId) });
+    const row = make('div', { className: 'f3-link' }, make('span', { className: 'f3-link-label', textContent: `${l.label}:` }), name);
+    if (editable) row.append(make('button', { type: 'button', className: 'f3-link-remove', textContent: '×', title: 'Usuń powiązanie', onclick: () => setOp(l.personId, l.key, null) }));
+    box.append(row);
+  }
+
+  if (!editable) return;
+  const typeSel = make('select', {}, make('option', { value: '', textContent: 'Rodzaj…' }));
+  for (const t of LINK_TYPES) {
+    typeSel.append(make('option', { value: t.id, textContent: t.name }));
+    if (t.inverse) typeSel.append(make('option', { value: '~' + t.id, textContent: t.inverseName }));
+  }
+  const personSel = make('select', {}, make('option', { value: '', textContent: 'Osoba…' }));
+  const candidates = chart.store.getData().filter((p) => p.id !== d.id && !isPlaceholder(p))
+    .map((p) => ({ id: p.id, text: displayName(p) + (p.data.birthday ? ` (ur. ${p.data.birthday})` : '') }))
+    .sort((a, b) => a.text.localeCompare(b.text, 'pl'));
+  for (const c of candidates) personSel.append(make('option', { value: c.id, textContent: c.text }));
+  const addBtn = make('button', { type: 'button', textContent: 'Dodaj', onclick: () => {
+    const type = typeSel.value, other = personSel.value;
+    if (!type || !other) return toast('Wybierz rodzaj powiązania i osobę');
+    // „~typ” = druga osoba jest np. chrześniakiem tej osoby, więc wpis trafia do jej danych
+    if (type.startsWith('~')) setOp(other, LINK_PREFIX + d.id, type.slice(1));
+    else setOp(d.id, LINK_PREFIX + other, type);
+  } });
+  box.append(make('div', { className: 'f3-link-add' }, typeSel, personSel, addBtn));
+}
+
+function showPerson(id) {
+  chart.updateMainId(id);
+  chart.updateTree({});
+  edit.open(chart.store.getDatum(id));
 }
 
 function refreshChart(map) {

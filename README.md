@@ -79,6 +79,8 @@ test/               testy scalania (Node) i test e2e z atrapą GitHub API (Playw
 
 Pola osoby (imię, nazwisko, nazwisko rodowe, daty, miejsce urodzenia, zdjęcie, notatki) definiuje tablica `FIELDS` w `js/app.js` — możesz dopisać własne.
 
+Powiązania poza drzewem (chrzestni, opiekunowie, przyjaciele, inne) definiuje tablica `LINK_TYPES` w `js/app.js`. Są zapisywane w danych osoby jako pola `link:<id drugiej osoby>` z rodzajem powiązania (np. `"link:…": "godparent"` = ta druga osoba jest chrzestnym/chrzestną); strona drugiej osoby (chrześniak) jest wyliczana przy wyświetlaniu. Można dopisać własne rodzaje — nie zmieniaj tylko `id` istniejących, bo są zapisane w danych. Powiązania nie są rysowane liniami na wykresie (family-chart tego nie obsługuje), widać je w panelu osoby.
+
 ## Testy
 
 ```bash
