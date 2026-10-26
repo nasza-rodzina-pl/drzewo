@@ -103,6 +103,11 @@ function createChart(map) {
     .setLinkExistingRelConfig({ title: 'Albo połącz z istniejącą osobą', select_placeholder: 'Wybierz osobę', linkRelLabel: (d) => displayName(d) })
     .setCardClickOpen(card)
     .setOnFormCreation(addSiblingButtons)
+    .setOnDelete((d, deletePerson, done) => {
+      if (!confirm(`Czy na pewno chcesz usunąć osobę ${displayName(d)}?`)) return;
+      deletePerson();
+      done();
+    })
     .setOnChange(onLocalChange);
 
   chart.setPersonDropdown((d) => displayName(d), { placeholder: 'Szukaj osoby' });
