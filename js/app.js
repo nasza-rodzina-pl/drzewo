@@ -44,6 +44,7 @@ const state = {
 let chart, card, edit;
 
 const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const el = {
   status: $('status'), save: $('btn-save'), discard: $('btn-discard'), note: $('commit-note'),
   banner: $('banner'), bannerText: $('banner-text'), toast: $('toast'), avatar: $('avatar'),
@@ -100,7 +101,11 @@ function createChart(map) {
   chart.store.state.unknown_card_label = 'Nieznany'; // biblioteka nie ma do tego settera
 
   card = chart.setCardHtml()
-    .setCardDisplay([['first name', 'last name'], ['birthday', 'death']])
+    .setCardDisplay([
+      (p) => esc([p.data['first name'], p.data['last name']].filter(Boolean).join(' '))
+        + (p.data.death ? ' <span class="card-cross" title="Nie żyje">†</span>' : ''),
+      (p) => esc([p.data.birthday, p.data.death && `† ${p.data.death}`].filter(Boolean).join(' – ')),
+    ])
     .setCardImageField('avatar')
     .setMiniTree(true)
     .setStyle('imageRect')
