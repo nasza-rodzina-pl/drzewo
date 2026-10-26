@@ -162,6 +162,25 @@ with sync_playwright() as pw:
     saved = json.loads(page.evaluate("localStorage.getItem('family-tree:auth')"))
     assert saved['access_token'] == 'test-token' and saved['refresh_token'] == 'r1', saved
 
+    # pobieranie danych i historia pytają o potwierdzenie
+    asked = []
+    def answer(ok):
+        page.once('dialog', lambda d: (asked.append(d.message), d.accept() if ok else d.dismiss()))
+    downloads = []
+    page.on('download', lambda d: downloads.append(d))
+    for item in ('#menu-history', '#menu-export'):
+        answer(False)
+        page.click('#btn-menu')
+        page.click(item)
+    page.wait_for_timeout(500)
+    assert len(ctx.pages) == 1 and not downloads, (ctx.pages, downloads)
+    answer(True)
+    page.click('#btn-menu')
+    with page.expect_download() as dl:
+        page.click('#menu-export')
+    assert dl.value.suggested_filename == 'drzewo.json'
+    assert len(asked) == 3 and 'historię' in asked[0] and 'drzewo.json' in asked[1], asked
+
     # wylogowanie (zawsze także z GitHuba): token usunięty, przejście na github.com/logout
     ctx.route('https://github.com/logout', lambda route, req: route.fulfill(status=200, content_type='text/html', body='logout'))
     page.click('#btn-menu')

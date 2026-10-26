@@ -650,7 +650,11 @@ $('menu-reload').onclick = async () => {
   if (dirtyCount() > 0) { await pullAndMerge(); toast('Scalono z aktualnym stanem repozytorium'); }
   else await fullReload();
 };
+$('menu-history').onclick = (e) => {
+  if (!confirm('Otworzyć historię zmian na GitHubie?')) e.preventDefault();
+};
 $('menu-export').onclick = () => {
+  if (!confirm('Pobrać wszystkie dane drzewa do pliku drzewo.json?')) return;
   const blob = new Blob([JSON.stringify(toList(state.local), null, 2)], { type: 'application/json' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'drzewo.json' });
   a.click();
