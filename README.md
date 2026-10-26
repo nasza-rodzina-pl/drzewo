@@ -41,7 +41,7 @@ Użytkownicy logują się kontem GitHub — nikt nie tworzy tokenów. Potrzebne 
 - **Expire user authorization tokens**: jeśli ta opcja jest dostępna, zaznacz ją (token ważny 8 h, odświeżany automatycznie); jeśli jej nie ma, nic nie szkodzi — strona obsługuje też tokeny bez terminu ważności,
 - **Webhook → Active**: odznacz,
 - **Repository permissions → Contents: Read and write** (Metadata: Read-only dodaje się samo), nic więcej,
-- **Where can this GitHub App be installed?**: *Only on this account*.
+- **Where can this GitHub App be installed?**: *Any account* (aplikacja publiczna). Przy *Only on this account* zalogować może się tylko właściciel — inni dostają na GitHubie błąd 404. Publiczna aplikacja nie daje nikomu dostępu do danych: działa tylko na repozytoriach, na których ją zainstalowano, i tylko dla osób, które mają do nich dostęp. Ustawienie można zmienić później w *Advanced → Make public*.
 
 Po utworzeniu skopiuj **Client ID** i wygeneruj **Client secret** (*Generate a new client secret*). Potem *Install App* → zainstaluj na swoim koncie → *Only select repositories* → `drzewo-dane`.
 
