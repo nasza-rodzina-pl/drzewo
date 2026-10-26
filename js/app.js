@@ -378,12 +378,16 @@ $('menu-export').onclick = () => {
   a.click();
   URL.revokeObjectURL(a.href);
 };
-$('menu-logout').onclick = () => {
+function logout(then) {
   if (dirtyCount() > 0 && !confirm('Masz niezapisane zmiany (zostaną zachowane jako szkic w tej przeglądarce). Wylogować?')) return;
   auth.logout();
   clearInterval(state.pollTimer);
-  location.reload();
-};
+  state.store = null; // szkic jest już zapisany, bez pytania „opuścić stronę?”
+  then();
+}
+$('menu-logout').onclick = () => logout(() => location.reload());
+// GitHub nie pozwala wylogować z zewnątrz — jego strona wylogowania wymaga kliknięcia „Sign out”.
+$('menu-logout-github').onclick = () => logout(() => location.assign('https://github.com/logout'));
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
 });
